@@ -86,7 +86,7 @@ async function sgctodaysDate(parameters) {
             required: false
         }
     ]
-})(greeting);
+})(sgcgreeting);
 (0, opal_tools_sdk_1.tool)({
     name: 'sgctodays-date',
     description: 'Returns today\'s date in the specified format',
@@ -98,7 +98,7 @@ async function sgctodaysDate(parameters) {
             required: false
         }
     ]
-})(todaysDate);
+})(sgctodaysDate);
 // Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -97,7 +97,7 @@ tool({
       required: false
     }
   ]
-})(greeting);
+})(sgcgreeting);
 
 tool({
   name: 'sgctodays-date',
@@ -110,7 +110,7 @@ tool({
       required: false
     }
   ]
-})(todaysDate);
+})(sgctodaysDate);
 
 // Start the server
 const PORT = process.env.PORT || 3000;
