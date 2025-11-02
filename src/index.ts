@@ -14,12 +14,16 @@ interface GreetingParameters {
   language?: string;
 }
 
-interface DensityParameters {
+interface DateParameters {
   format?: string;
 }
 
+interface DensityParameters {
+  url?: string;
+}
+
 interface EmotionParameters {
-  format?: string;
+  url?: string;
 }
 
 /**
