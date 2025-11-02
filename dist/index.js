@@ -14,14 +14,19 @@ interface GreetingParameters {
   language?: string;
 }
 
-interface DateParameters {
+interface DensityParameters {
+  format?: string;
+}
+
+interface EmotionParameters {
   format?: string;
 }
 
 /**
  * Content Density: Analyses a web page for content density
  */
-async function contentDensityEvaluator(url: string) {
+async function contentDensityEvaluator(parameters: DensityParameters) {
+  const { url } = parameters;
   const res = await fetch(url);
   const html = await res.text();
   const $ = cheerio.load(html);
@@ -62,6 +67,52 @@ async function contentDensityEvaluator(url: string) {
         ? "Missing headings; add subheads for scannability."
         : "Good heading structure.",
     ],
+  };
+}
+
+/**
+ * Emotion of content: Analyses a web page for content emotion
+ */
+async function emotionToneMapper(parameters: EmotionParameters) {
+  const { url } = parameters;
+  
+  const res = await fetch(url);
+  const html = await res.text();
+  const $ = cheerio.load(html);
+
+  const text = $("h1, h2, h3, h4, h5, h6, p, button, a[role=button]")
+    .map((_, el) => $(el).text())
+    .get()
+    .join(" ")
+    .toLowerCase();
+
+  const lex = {
+    joy: ["love", "happy", "fun", "delight", "amazing"],
+    urgency: ["now", "today", "limited", "hurry", "ends soon"],
+    exclusivity: ["exclusive", "vip", "members", "premium", "invite"],
+    reassurance: ["safe", "secure", "guaranteed", "trusted", "reliable"],
+    fomo: ["don’t miss", "running out", "before it’s gone"],
+  };
+
+  const scores: Record<string, number> = {};
+  for (const [k, v] of Object.entries(lex))
+    scores[k] = v.reduce(
+      (a, term) => a + (text.split(term).length - 1),
+      0
+    );
+
+  const dominant = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+  const tone =
+    dominant[1] === 0 ? "neutral / informational" : dominant[0];
+
+  return {
+    url,
+    dominantTone: tone,
+    emotionScores: scores,
+    notes:
+      tone === "neutral / informational"
+        ? ["No strong emotional language detected."]
+        : [`Tone leans ${tone}.`],
   };
 }
 
@@ -139,6 +190,20 @@ tool({
     },
   ]
 })(contentDensityEvaluator);
+
+// Register the tools using decorators with explicit parameter definitions
+tool({
+  name: 'emotionToneMapper',
+  description: 'Analyses a web page for content density',
+  parameters: [
+    {
+      name: 'url',
+      type: ParameterType.String,
+      description: 'URL to analyse',
+      required: true
+    },
+  ]
+})(emotionToneMapper);
 
 // Register the tools using decorators with explicit parameter definitions
 tool({
