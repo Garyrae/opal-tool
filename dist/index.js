@@ -288,6 +288,139 @@ async function accessibility_surface_check(parameters) {
   };
 }
 
+async function link_health_inspector(parameters) {
+  const { url } = parameters;
+  // Fetch main page HTML
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
+  const html = await res.text();
+
+  // Extract all hrefs
+  // This is naive: it grabs href="...". Won't follow JS-built links etc.
+  const hrefMatches = [...html.matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["']/gi)];
+  const hrefs = hrefMatches.map(m => m[1]);
+
+  // Normalise URLs to absolute so we can classify internal/external
+  let originHost;
+  try {
+    originHost = new URL(url).hostname;
+  } catch {
+    originHost = "";
+  }
+
+  function toAbsolute(href) {
+    try {
+      // Relative links get resolved against base URL
+      return new URL(href, url).toString();
+    } catch {
+      return null;
+    }
+  }
+
+  // Filter obvious non-web links (mailto:, tel:, javascript:, anchors)
+  const webLinks = hrefs.filter(href => {
+    if (!href) return false;
+    const low = href.toLowerCase();
+    if (low.startsWith("mailto:")) return false;
+    if (low.startsWith("tel:")) return false;
+    if (low.startsWith("javascript:")) return false;
+    if (low.startsWith("#")) return false;
+    return true;
+  });
+
+  const absoluteLinks = webLinks
+    .map(toAbsolute)
+    .filter(l => !!l);
+
+  // Deduplicate
+  const uniqueLinks = [...new Set(absoluteLinks)];
+
+  // Work out internal vs external
+  const internalLinks = [];
+  const externalLinks = [];
+  for (const link of uniqueLinks) {
+    try {
+      const u = new URL(link);
+      if (u.hostname === originHost) {
+        internalLinks.push(link);
+      } else {
+        externalLinks.push(link);
+      }
+    } catch {
+      // ignore malformed URLs
+    }
+  }
+
+  // Estimate depth of internal links: /a/b/c -> depth 3
+  function pathDepth(u) {
+    try {
+      const parsed = new URL(u);
+      // ignore leading '/' split artifact
+      return parsed.pathname
+        .split("/")
+        .filter(seg => seg && seg.trim().length > 0).length;
+    } catch {
+      return null;
+    }
+  }
+  const depths = internalLinks
+    .map(pathDepth)
+    .filter(d => typeof d === "number");
+  const avgDepth =
+    depths.length === 0
+      ? 0
+      : depths.reduce((a, b) => a + b, 0) / depths.length;
+
+  // Light health check for first N links
+  // We'll attempt HEAD first; if it fails or returns method not allowed, fall back to GET.
+  const MAX_CHECK = 20;
+  let brokenCount = 0;
+  let redirectCount = 0;
+
+  for (let i = 0; i < Math.min(uniqueLinks.length, MAX_CHECK); i++) {
+    const link = uniqueLinks[i];
+    try {
+      let headResp = await fetch(link, { method: "HEAD", redirect: "manual" });
+      // Some servers block HEAD; fallback to GET if status is 405/403/etc.
+      if (headResp.status === 405 || headResp.status === 403) {
+        headResp = await fetch(link, { method: "GET", redirect: "manual" });
+      }
+
+      // Broken = 4xx or 5xx
+      if (headResp.status >= 400) {
+        brokenCount++;
+      }
+
+      // Redirect detected if 3xx without following
+      if (headResp.status >= 300 && headResp.status < 400) {
+        redirectCount++;
+      }
+    } catch {
+      // Network/host errors count as broken
+      brokenCount++;
+    }
+  }
+
+  const notes = [];
+  if (brokenCount > 0) notes.push(`${brokenCount} broken link(s) detected.`);
+  if (redirectCount > 0) notes.push(`${redirectCount} redirecting link(s) detected.`);
+  if (internalLinks.length === 0) notes.push("No internal links found. Is this a standalone landing page?");
+  if (externalLinks.length > 0 && internalLinks.length === 0)
+    notes.push("Page links mostly out to other domains.");
+  if (notes.length === 0) notes.push("Link health looks generally OK.");
+
+  return {
+    url,
+    linksFound: uniqueLinks.length,
+    internalLinks: internalLinks.length,
+    externalLinks: externalLinks.length,
+    brokenLinks: brokenCount,
+    redirectedLinks: redirectCount,
+    averageDepth: Number(avgDepth.toFixed(2)),
+    notes
+  };
+}
+
 // Register the tools using decorators with explicit parameter definitions
 (0, opal_tools_sdk_1.tool)({
     name: 'content_density_evaluator',
@@ -315,6 +448,20 @@ async function accessibility_surface_check(parameters) {
         },
     ]
 })(accessibility_surface_check);
+
+// Register the tools using decorators with explicit parameter definitions
+(0, opal_tools_sdk_1.tool)({
+    name: 'link_health_inspector',
+    description: 'Analyses a web page for broken links',
+    parameters: [
+        {
+            name: 'url',
+            type: opal_tools_sdk_1.ParameterType.String,
+            description: 'URL to analyse',
+            required: true
+        },
+    ]
+})(link_health_inspector);
 
 // Register the tools using decorators with explicit parameter definitions
 (0, opal_tools_sdk_1.tool)({
