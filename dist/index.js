@@ -68,6 +68,69 @@ async function sgctodaysDate(parameters) {
         timestamp: today.getTime() / 1000
     };
 }
+
+/**
+ * Content Density: Analyses a web page for content density
+ */
+async function contentdensityevaluator(parameters) {
+  const { url } = parameters;
+  const res = await fetch(url);
+  const html = await res.text();
+  const $ = cheerio.load(html);
+
+  const paragraphs = $("p")
+    .map((_, el) => $(el).text().trim().replace(/\s+/g, " "))
+    .get()
+    .filter(Boolean);
+
+  const words = paragraphs.join(" ").split(/\s+/).filter(Boolean).length;
+  const images = $("img").length;
+  const headings = $("h1, h2, h3, h4, h5, h6").length;
+  const avgParagraph = paragraphs.length
+    ? paragraphs.reduce((a, p) => a + p.split(/\s+/).length, 0) / paragraphs.length
+    : 0;
+
+  const scanability =
+    100 -
+    (avgParagraph > 100 ? 20 : 0) -
+    (images === 0 ? 20 : 0) -
+    (headings === 0 ? 20 : 0);
+
+  return {
+    url,
+    wordCount: words,
+    imageCount: images,
+    headingCount: headings,
+    avgParagraphLength: Math.round(avgParagraph),
+    scanabilityScore: Math.max(0, scanability),
+    notes: [
+      avgParagraph > 80
+        ? "Paragraphs are long; consider splitting them."
+        : "Paragraph lengths look healthy.",
+      images === 0
+        ? "No images found; consider adding visuals."
+        : "Has supporting images.",
+      headings === 0
+        ? "Missing headings; add subheads for scannability."
+        : "Good heading structure.",
+    ],
+  };
+}
+
+// Register the tools using decorators with explicit parameter definitions
+(0, opal_tools_sdk_1.tool)({
+    name: 'contentdensityevaluator',
+    description: 'Analyses a web page for content density',
+    parameters: [
+        {
+            name: 'url',
+            type: opal_tools_sdk_1.ParameterType.String,
+            description: 'URL to analyse',
+            required: true
+        },
+    ]
+})(contentdensityevaluator);
+
 // Register the tools using decorators with explicit parameter definitions
 (0, opal_tools_sdk_1.tool)({
     name: 'sgcgreeting',
