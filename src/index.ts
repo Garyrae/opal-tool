@@ -14,7 +14,7 @@ const toolsService = new opal_tools_sdk_1.ToolsService(app);
  * Greeting Tool: Greets a person in a random language
  */
 // Apply tool decorator after function definition
-async function sgcgreeting(parameters) {
+async function sgc_greeting(parameters) {
     const { name, language } = parameters;
     // If language not specified, choose randomly
     const selectedLanguage = language ||
@@ -39,7 +39,7 @@ async function sgcgreeting(parameters) {
  * Today's Date Tool: Returns today's date in the specified format
  */
 // Apply tool decorator after function definition
-async function sgctodaysDate(parameters) {
+async function sgc_todays_Date(parameters) {
     const format = parameters.format || '%Y-%m-%d';
     // Get today's date
     const today = new Date();
@@ -72,7 +72,7 @@ async function sgctodaysDate(parameters) {
 /**
  * Content Density: Analyses a web page for content density
  */
-async function contentdensityevaluator(parameters) {
+async function content_density_evaluator(parameters) {
   const { url } = parameters;
   // --- Helpers -------------------------------------------------
   function getTagContents(html, tag) {
@@ -152,7 +152,7 @@ async function contentdensityevaluator(parameters) {
 
 // Register the tools using decorators with explicit parameter definitions
 (0, opal_tools_sdk_1.tool)({
-    name: 'contentdensityevaluator',
+    name: 'content_density_evaluator',
     description: 'Analyses a web page for content density',
     parameters: [
         {
@@ -162,11 +162,11 @@ async function contentdensityevaluator(parameters) {
             required: true
         },
     ]
-})(contentdensityevaluator);
+})(content_density_evaluator);
 
 // Register the tools using decorators with explicit parameter definitions
 (0, opal_tools_sdk_1.tool)({
-    name: 'sgcgreeting',
+    name: 'sgc_greeting',
     description: 'Greets a person in a random language (English, Spanish, or French)',
     parameters: [
         {
@@ -184,7 +184,7 @@ async function contentdensityevaluator(parameters) {
     ]
 })(sgcgreeting);
 (0, opal_tools_sdk_1.tool)({
-    name: 'sgctodays-date',
+    name: 'sgc_todays_date',
     description: 'Returns today\'s date in the specified format',
     parameters: [
         {
@@ -194,7 +194,7 @@ async function contentdensityevaluator(parameters) {
             required: false
         }
     ]
-})(sgctodaysDate);
+})(sgc_todays_Date);
 // Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
