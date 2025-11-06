@@ -1,7 +1,5 @@
 'use strict';
 
-import puppeteer from 'puppeteer';
-
 var __importDefault: (mod: any) => any =
     (globalThis && (globalThis as any).__importDefault) ||
     function (mod: any) {
@@ -590,55 +588,6 @@ async function speed_heuristics_checker(parameters: { url: string }) {
     };
 }
 
-async function getPageSize(url: string): Promise<{
-    totalBytes: number;
-    requests: Array<{ url: string; sizeKB: string; status: number }>;
-}> {
-    const browser = await puppeteer.launch({ headless: true });
-    const page = await browser.newPage();
-
-    let totalBytes = 0;
-    const requests: {
-        url: string;
-        sizeKB: string;
-        status: number;
-    }[] = [];
-
-    // Listen for all network responses
-    page.on('response', async (response) => {
-        try {
-            const buffer = await response.buffer();
-            totalBytes += buffer.length;
-            requests.push({
-                url: response.url(),
-                sizeKB: (buffer.length / 1024).toFixed(1),
-                status: response.status(),
-            });
-        } catch (e) {
-            // some responses (like redirects or cached items) may fail to buffer
-            console.warn(
-                `Failed to buffer response from ${response.url()}:`,
-                e
-            );
-        }
-    });
-
-    try {
-        // Load the page fully
-        await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
-    } catch (error) {
-        await browser.close();
-        throw new Error(`Failed to load page ${url}: ${error}`);
-    }
-
-    await browser.close();
-
-    return {
-        totalBytes,
-        requests,
-    };
-}
-
 async function getEmissions(bytes: number) {
     const API_URL =
         'https://api.websitecarbon.com/data?bytes=' + bytes + '&green=0';
@@ -659,19 +608,21 @@ async function getEmissions(bytes: number) {
     }
 }
 
-async function carbonEmissions(parameters: { url: string }) {
+async function carbonEmissions(parameters: { sizeInMB: number; url: string }) {
     try {
-        const pageData = await getPageSize(parameters.url);
+        const pageData = {
+            totalBytes: parameters.sizeInMB * 1024 * 1024,
+        };
         const emissions = await getEmissions(pageData.totalBytes);
 
         return {
             url: parameters.url,
             totalBytes: pageData.totalBytes,
             totalSizeKB: Math.round(pageData.totalBytes / 1024),
-            requestCount: pageData.requests.length,
+            // requestCount: pageData.requests.length,
             carbonGrams: emissions.grams,
             cleanerThanPercent: emissions.cleanerThan,
-            requests: pageData.requests.slice(0, 20), // Limit to first 20 requests to avoid overwhelming response
+            // requests: pageData.requests.slice(0, 20), // Limit to first 20 requests to avoid overwhelming response
         };
     } catch (error) {
         throw new Error(
