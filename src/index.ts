@@ -644,6 +644,12 @@ async function carbonEmissions(parameters: { sizeInMB: number; url: string }) {
             description: 'URL to analyse',
             required: true,
         },
+        {
+            name: 'sizeInMB',
+            type: opal_tools_sdk_1.ParameterType.Number,
+            description: 'Size of the web page in megabytes',
+            required: true,
+        },
     ],
 })(carbonEmissions);
 
