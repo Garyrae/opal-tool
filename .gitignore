@@ -1,0 +1,7 @@
+dist
+node_modules
+storybook-static
+.DS_Store
+.vscode/settings.json
+/.vs
+coverage/
