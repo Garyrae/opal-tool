@@ -160,9 +160,9 @@ tool({
 })(speed_heuristics_checker);
 
 // API endpoint for the speed checker
-app.get('/tools/speed_heuristics_checker', async (req, res) => {
+app.post('/tools/speed_heuristics_checker', async (req, res) => {
     try {
-        const { url } = req.query;
+        const { url } = req.body;
         if (!url || typeof url !== 'string') {
             return res.status(400).json({ error: 'Missing or invalid url' });
         }
